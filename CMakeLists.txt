@@ -25,14 +25,15 @@ find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 
 # See https://dune-daq-sw.readthedocs.io/en/latest/packages/daq-cmake/#daq_add_library
 
-daq_add_library( LINK_LIBRARIES ) # Any source files and/or dependent libraries to link in not yet determined
+daq_add_library( *.cpp LINK_LIBRARIES fmt::fmt) # Any source files and/or dependent libraries to link in not yet determined
 
 ##############################################################################
 
 
 # See https://dune-daq-sw.readthedocs.io/en/latest/packages/daq-cmake/#daq_add_application
 
-daq_add_application(simple_read_protowib_write_dunewib simple_read_protowib_write_dunewib.cxx LINK_LIBRARIES CLI11::CLI11 fmt::fmt detdataformats::detdataformats) # Any libraries to link in not yet determined
+daq_add_application(simple_read_protowib simple_read_protowib.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats) # Any libraries to link in not yet determined
+daq_add_application(block_read_protowib block_read_protowib.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats ) # Any libraries to link in not yet determined
 
 ##############################################################################
 

@@ -49,6 +49,14 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
  if (! fs::exists(file_path)) {
 //! Makes this an if "not" 
 
+    fmt::print("ERROR: can't locate file; try checking the name?\n", filename); //prints out when the file, as input, doesn't exist
+    exit(-1); /*exit success is exit(0); exit failure is exit(1), but can still be completed; whereas exit(-1) is the command can't be completed:
+ EXAMPLE - Terminating Program
+ exit(0) = Program was completed successfully
+ exit(1) = Program was terminated abnormally
+ exit(-1) = Program could not be terminated
+ */
+
 
  }
 

@@ -47,11 +47,11 @@ int main(int argc, char **argv) {
   constexpr uint32_t n_frames = 2;
   fmt::print("Reading {} frames of size {} bytes \n", n_frames, protowib_frame_size);
 
-  auto block = bfr.read_block(protowib_frame_size);
+  auto block = bfr.read_block(n_frames * protowib_frame_size);
 
   for (uint32_t i(0); i<n_frames; ++i ) {
 
-    detdataformats::wib::WIBFrame *frame = reinterpret_cast<detdataformats::wib::WIBFrame *>(block.data());
+    detdataformats::wib::WIBFrame *frame = reinterpret_cast<detdataformats::wib::WIBFrame *>(block.data()+i*protowib_frame_size);
     auto* header = frame->get_wib_header();
 
     fmt::print("---Printing WIB information - frame {}\n", i);
@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 
     fmt::print("fiber: {} crate: {} slot: {}\n", (uint8_t)header->fiber_no, (uint8_t)header->crate_no, (uint8_t)header->slot_no);
     for (uint16_t i(0); i<256; ++i) {
-      fmt::print("{:03} {:03x} {:4d}\n", i, frame->get_channel(i), frame->get_channel(i));
+      fmt::print("{:03}, {:03x}, {:4d}\n", i, frame->get_channel(i), frame->get_channel(i));
     }
   }
 

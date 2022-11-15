@@ -60,5 +60,33 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
 
  }
 
+// from standard ifstream namespace - creates an empty variables
+    std::ifstream ifile;
+    ifile.open(filename, std::ios::binary); //Uses ifile library to provide open command;
+   //must always check that file is open; below, is the outcome if file is NOT open
+    if ( !ifile.is_open() ) {
+        throw std::runtime_error(fmt::format("file couldn't be opened {}", filename));
+    }
 
+    //Now we look at the file size
+    ifile.seekg(0, std::ios_base::end); //sets the initial position
+    // size_t ifsize = ifile.tellg(); //requires absolute position from tellg. Not necessary here
+    ifile.seekg(0, std::ios_base::beg); //set the final position at the beginning; effectively resetting
+
+    // prepares data block, using a unique pointer to stand in for a container.
+    size_t block_size = 1024; // 1kB
+    auto block_data = std::make_unique<char[]>(block_size); //created the container block_size of size 1024
+
+    // populates container (fills the block with the first kB of data)
+    ifile.read(block_data.get(), block_size);
+    detdataformats::wib2::WIB2Frame *frame = reinterpret_cast<detdataformats::wib2::WIB2Frame *>(block_data.get());
+    fmt::print("Outputting DUNE WIB information\n");
+
+   fmt::print("crate: {} fiber: {} slot: {}\n", (uint8_t)frame->header.crate, (uint8_t)frame->header.link, (uint8_t)frame->header.slot); //frame points to header struct which hosts the variables we want. 
+    for (uint16_t i(0); i<256; ++i) { //fiber is now referred to as link
+        fmt::print("{:03} {:03x} {:4d}\n", i, frame->get_adc(i), frame->get_adc(i)); //prints channel, then adc value in hex and decimal respectively
+    }
+    fmt::print("Output is {}.\n", filename);
+
+   return 0;
 }

@@ -90,3 +90,4 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
 
    return 0;
 }
+//simple_read_dunewib /nfs/rscratch/username/WIB2.out for the data

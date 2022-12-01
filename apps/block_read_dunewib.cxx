@@ -21,6 +21,10 @@ This should be understandable to someone who is newer to c++ by explaining each 
 #include "detdataformats/wib2/WIB2Frame.hpp"//contains classes for accessing raw wib2 data with definitive bindings
 //access more definitions and bindings at https://edms.cern.ch/document/2088713/4
 
+
+//---- Initial code
+
+
 //namespaces
 namespace fs = std::filesystem; //creates a shorthand for the filesystem namespace
 using namespace dunedaq; //adds dunedaq to the global namespace to save time
@@ -58,6 +62,10 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
 
 }
 
+
+//---- Extracting the data
+
+
 // from standard ifstream namespace - creates an empty variables
     std::ifstream ifile;
     ifile.open(filename, std::ios::binary); //Uses ifile library to provide open command;
@@ -72,6 +80,14 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
 
   constexpr size_t dune_frame_size = sizeof(detdataformats::wib2::WIB2Frame); //creates a constant expression for the wib frame (how big each frame, or block, is going to be)
   //constexpr uint32_t nframes  
+
+
+
+
+  //---- User Input & Checks
+
+  //Goal: Name of the text file to save data to (e.g. test.txt or 'this file name already exists')
+  //Number of frames to be included (must be positive integer)
   
   //void n_frames(int n_frames)
   //std::cout<< "Enter a (positive integer) number for how many blocks you wish to read: "<< endl;
@@ -81,29 +97,62 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
 
     int n_frames;
     fmt::print("Please enter the (positive integer) number of blocks you wish to read: ");
-    std::cout <<"\n";
-    std::cin >> n_frames;
-    /*
+    std::cout <<'\n';
+    std::getline(std::cin,n_frames);
+    
     if (!(n_frames>0)) {
         throw std::runtime_error(fmt::format("Your value must be positive"));
         case n_frames>0:
         {
-        break;
+        exit(-1);
+        }
+        else
+        {
+
         }
     }
      if (!(floor(n_frames) == n_frames)) {
         throw std::runtime_error(fmt::format("Your value must be whole"));
         case floor(n_frames) == n_frames:
         {
-        break;
+        exit(-1);
+        }
+        else
+        {
+
         }
     }
     //For ensuring program doesn't overwork itself nor accept wrong input
-    */
+    
+
+
+    std::string FNSTORE;
+    std::string FN;
+    std::string FNcheck;
+    std::cout << "What would you like the textfile to be called?\n";
+    std::getline(std::cin, FNcheck);
+    std::cin >> FNSTORE;
+    fmt::print("FN is {}\n", FN);
+    fmt::print("FNcheck is{}\n", FNcheck);
+
+    if (FN==FNcheck){
+
+    }
+    else
+    {
+      std::cout << "Please do not include spaces in the file name\n";
+      exit(-1);
+    }
+
   
   fmt::print("Reading {} frames of size {} bytes \n", n_frames, dune_frame_size); //reads x number of frames of size y
 
   auto block = bfr.read_block(n_frames * dune_frame_size); //creates a container equating to the size of the frame (roughly 1024/1kB generally) times the number of blocks you wish to read
+
+
+
+//---- Printing data
+
 
   for (uint32_t i(0); i<n_frames; ++i ) {
     ifile.read(block.data(), dune_frame_size);
@@ -118,6 +167,10 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
     }
   }
   fmt::print("Output is {}.\n", filename);
+
+  
+  //writing data to text file
+
 
   return 0;
 }

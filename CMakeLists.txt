@@ -36,6 +36,7 @@ daq_add_application(simple_read_protowib simple_read_protowib.cxx LINK_LIBRARIES
 daq_add_application(block_read_protowib block_read_protowib.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats ) # Any libraries to link in not yet determined
 daq_add_application(simple_read_dunewib simple_read_dunewib.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats) # Any libraries to link in not yet determined  
 daq_add_application(block_read_dunewib block_read_dunewib.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats) # Any libraries to link in not yet determined
+daq_add_application(print_block_read_dunewib print_block_read_dunewib.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats) # Any libraries to link in not yet determined  
 
 ##############################################################################
 

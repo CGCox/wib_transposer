@@ -119,7 +119,51 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
   if (NTest.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890_-.*") != std::string::npos)
 {
   std::cerr << "Please do not use special characters which won't be accepted in text file names.\n";
+
 }
 
-    //continue with other checks
+
+  fmt::print("Reading {} frames of size {} bytes \n", n_frames, dune_frame_size); //reads x number of frames of size y
+
+  auto block = bfr.read_block(n_frames * dune_frame_size); //creates a container equating to the size of the frame (roughly 1024/1kB generally) times the number of blocks you wish to read
+
+  //printing data
+
+  std::ofstream MyFile("{}.txt\n", FNcheck);
+
+
+  for (uint32_t i(0); i<n_frames; ++i ) {
+    ifile.read(block.data(), dune_frame_size);
+    detdataformats::wib2::WIB2Frame *frame = reinterpret_cast<detdataformats::wib2::WIB2Frame *>(block.data()+i*dune_frame_size);
+    fmt::print("Outputting DUNE WIB frame {} information\n", i);
+
+    fmt::print("{}\n", frame->get_timestamp());
+
+    fmt::print("crate: {} fiber: {} slot: {}\n", (uint8_t)frame->header.crate, (uint8_t)frame->header.link, (uint8_t)frame->header.slot);
+    for (uint16_t i(0); i<256; ++i) {
+      fmt::print("{:03}, {:03x}, {:4d}\n", i, frame->get_adc(i), frame->get_adc(i));
+    }
+  }
+  fmt::print("Output is {}.\n", filename);
+
+  
+  //writing data to text file
+
+  std::ofstream out;
+  out.open("{}.txt",NTest);
+
+  cin >> fmt::print("Outputting DUNE WIB frame {} information\n", i);
+
+  cin >> fmt::print("{}\n", frame->get_timestamp());
+
+  cin>> fmt::print("crate: {} fiber: {} slot: {}\n", (uint8_t)frame->header.crate, (uint8_t)frame->header.link, (uint8_t)frame->header.slot);
+    
+  for (uint16_t i(0); i<256; ++i) {
+    cin >>  fmt::print("{:03}, {:03x}, {:4d}\n", i, frame->get_adc(i), frame->get_adc(i));
+
  }
+
+std::out.close();
+
+return 0;
+}

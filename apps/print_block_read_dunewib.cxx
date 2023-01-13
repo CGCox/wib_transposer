@@ -16,6 +16,7 @@ This should be understandable to someone who is newer to c++ by explaining each 
 // fstream -> iostream; effectively makes a storage with an inherent initialiser and flusher
 #include <chrono> //Timing libraries
 #include <string> //For using strings
+#include <stdio.h>
 
 #include "wib_transposer/BinaryFileReader.hpp" //allows for block reading, advancing on simple reader
 #include "detdataformats/wib2/WIB2Frame.hpp"//contains classes for accessing raw wib2 data with definitive bindings
@@ -113,10 +114,10 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
       }
 
   fmt::print("What would you like to name the textfile?\n");
-  std::string NTest;
-  std::getline(std::cin, NTest);
+  std::string FileN;
+  std::getline(std::cin, FileN);
 
-  if (NTest.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890_-.*") != std::string::npos)
+  if (FileN.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890_-.*") != std::string::npos)
 {
   std::cerr << "Please do not use special characters which won't be accepted in text file names.\n";
 
@@ -129,7 +130,33 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
 
   //printing data
 
-  std::ofstream MyFile("{}.txt\n", FNcheck);
+std::ofstream os;
+std::ofstream outfile((FileN + ".txt").c_str());
+outfile.close();
+
+/*
+os.open(FileN.txt);
+ if(!os) { // checking if the file could be opened
+        std::cout << "\nCould not create text file\n";
+    }// add more checks to make sure file doesn't have same name
+    else {
+        std::cout << "\nYour text file " << filename << " was created successfully\n";
+    }
+
+  os.close();
+*/
+
+
+
+
+
+
+
+
+
+/*
+
+  std::ofstream MyFile("{}.txt\n", FileN);
 
 
   for (uint32_t i(0); i<n_frames; ++i ) {
@@ -145,12 +172,12 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
     }
   }
   fmt::print("Output is {}.\n", filename);
-
+*/
   
   //writing data to text file
-
+/*
   std::ofstream out;
-  out.open("{}.txt",NTest);
+  std::out.open("{}.txt", FileN);
 
   cin >> fmt::print("Outputting DUNE WIB frame {} information\n", i);
 
@@ -164,6 +191,6 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
  }
 
 std::out.close();
-
+*/
 return 0;
 }

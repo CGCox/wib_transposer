@@ -92,7 +92,8 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
   fmt::print("How many frames do you wish to readout?\n");
   std::string line;
   std::getline(std::cin, line);
-  int n_frames;
+  size_t n_frames;
+  //int n_frames;
  
  size_t pos;
   try {
@@ -120,7 +121,7 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
   if (FileN.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890_-.*") != std::string::npos)
 {
   std::cerr << "Please do not use special characters which won't be accepted in text file names.\n";
-
+  exit(-1);
 }
 
 
@@ -128,11 +129,21 @@ CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 
 
   auto block = bfr.read_block(n_frames * dune_frame_size); //creates a container equating to the size of the frame (roughly 1024/1kB generally) times the number of blocks you wish to read
 
-  //printing data
+  //Creating the file
 
 std::ofstream os;
 std::ofstream outfile((FileN + ".txt").c_str());
 outfile.close();
+
+std::string TextN = (FileN + ".txt");
+os.open(TextN);
+if(!os) { // checking if the file could be opened
+        std::cout << "\nCould not create text file\n";
+    }// add more checks to make sure file doesn't have same name
+    else {
+        std::cout << "\nYour text file " << filename << " was created successfully\n";
+    }
+os.close();
 
 /*
 os.open(FileN.txt);
@@ -146,6 +157,29 @@ os.open(FileN.txt);
   os.close();
 */
 
+
+  std::ofstream out(TextN);
+  std::streambuf *coutbuf = std::cout.rdbuf();
+  std::cout.rdbuf(out.rdbuf());
+
+  for (uint32_t i(0); i<n_frames; ++i ) {
+    ifile.read(block.data(), dune_frame_size);
+    detdataformats::wib2::WIB2Frame *frame = reinterpret_cast<detdataformats::wib2::WIB2Frame *>(block.data()+i*dune_frame_size);
+    auto A1 = fmt::format("Outputting DUNE WIB frame {} information\n", i);
+    std::cout << A1;
+
+    auto A2 = fmt::format("{}\n", frame->get_timestamp());
+    std::cout << A2;
+
+    auto A3 = fmt::format("crate: {} fiber: {} slot: {}\n", (uint8_t)frame->header.crate, (uint8_t)frame->header.link, (uint8_t)frame->header.slot);
+    std::cout << A3;
+    for (uint16_t i(0); i<256; ++i) {
+    auto UUU = fmt::format("{:03}, {:03x}, {:4d}\n", i, frame->get_adc(i), frame->get_adc(i));
+    std::cout << UUU;
+    }
+  }
+  
+  fmt::print("Output is {}.\n", filename);
 
 
 

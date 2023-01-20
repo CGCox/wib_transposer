@@ -36,8 +36,8 @@ inline std::string trim(std::string& str)
     return str;
 }
 
-int main(int argc, char **argv) {
-    CLI::App app{"App Description"};
+int main(int argc, char ** argv) {
+    CLI::App app;
 /*
 global function 'main' at start of program
 DEFINITIONS OF ELEMENTS
@@ -52,16 +52,8 @@ char ** points at an array of pointers to the execution environment variables
 std::string filename; //standard 'std' namespace string which gives the file name component of the path
 app.add_option("filename", filename, "name of the wib file")->required();
 
-size_t n_frames;
-//std::string line;
-app.add_option("-N", n_frames, "Number of frames");
-
-std::string FileN;
-//std::string line;
-app.add_option("-T", FileN, "Name of the text file");
-
 CLI11_PARSE(app, argc, argv) //Parse translates each element such that, element 1=app, element 2=argc and element 3=argv.
-std::cout << "Number of frames you wish to readout: " << n_frames << std::endl;
+ 
  
  const fs::path file_path(filename); //gives the path for the given file
  if (! fs::exists(file_path)) {
@@ -97,33 +89,12 @@ std::cout << "Number of frames you wish to readout: " << n_frames << std::endl;
 
  //---- User Input & Checks
 
-
-
-//TEST
-/*
-int testoption{0};
-app.add_option("-N", testoption, "Number of frames");
-CLI11_PARSE(app, argc, argv);
-std::cout << "Number of frames you wish to readout: " << testoption << std::endl;
-*/
-
-
-/*
-std::string line;
-app.add_option("-N", line, "Number of frames");
-CLI11_PARSE(app, argc, argv);
-std::cout << "Number of frames you wish to readout: " << line << std::endl;
-*/
-
-
- /*
   fmt::print("How many frames do you wish to readout?\n");
   std::string line;
   std::getline(std::cin, line);
-  size_t n_frames;  
+  size_t n_frames;
   //int n_frames;
- */
-/*
+ 
  size_t pos;
   try {
         n_frames = std::stoi(trim(line), &pos);
@@ -153,7 +124,7 @@ std::cout << "Number of frames you wish to readout: " << line << std::endl;
   exit(-1);
 }
 
-*/
+
   fmt::print("Reading {} frames of size {} bytes \n", n_frames, dune_frame_size); //reads x number of frames of size y
 
   auto block = bfr.read_block(n_frames * dune_frame_size); //creates a container equating to the size of the frame (roughly 1024/1kB generally) times the number of blocks you wish to read
@@ -187,7 +158,7 @@ os.open(FileN.txt);
 */
 
 
-  std::ofstream out(TextN); //makes the cout output directly in the txt file TextN
+  std::ofstream out(TextN);
   std::streambuf *coutbuf = std::cout.rdbuf();
   std::cout.rdbuf(out.rdbuf());
 

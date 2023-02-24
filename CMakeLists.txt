@@ -14,6 +14,10 @@ find_package(daq-cmake REQUIRED)
 find_package(fmt REQUIRED)
 find_package(CLI11 REQUIRED)
 find_package(detdataformats REQUIRED)
+find_package(detchannelmaps REQUIRED)
+find_package(cetlib REQUIRED)   # Uses the daq-buildtools/cmake/Findcetlib.cmake
+find_package(ers REQUIRED)
+find_package(logging REQUIRED)
 
 daq_setup_environment()
 
@@ -30,14 +34,20 @@ daq_add_library( *.cpp LINK_LIBRARIES fmt::fmt) # Any source files and/or depend
 ##############################################################################
 
 
+##############################################################################
+
+
 # See https://dune-daq-sw.readthedocs.io/en/latest/packages/daq-cmake/#daq_add_application
 
 daq_add_application(simple_read_protowib simple_read_protowib.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats) # Any libraries to link in not yet determined
 daq_add_application(block_read_protowib block_read_protowib.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats ) # Any libraries to link in not yet determined
 daq_add_application(simple_read_dunewib simple_read_dunewib.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats) # Any libraries to link in not yet determined  
 daq_add_application(block_read_dunewib block_read_dunewib.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats) # Any libraries to link in not yet determined
+daq_add_application(print_block_read_protowib print_block_read_protowib.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats detchannelmaps::detchannelmaps) # Any libraries to link in not yet determined
 daq_add_application(print_block_read_dunewib print_block_read_dunewib.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats) # Any libraries to link in not yet determined
 daq_add_application(newuser-wib2-blockreader newuser-wib2-blockreader.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats) # Any libraries o link in not yet determined 
+daq_add_application(protowib-tsv-transposer protowib-tsv-transposer.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats detchannelmaps::detchannelmaps) # Any libraries o link in not yet determined 
+daq_add_application(uift uift.cxx LINK_LIBRARIES ${PROJECT_NAME} CLI11::CLI11 detdataformats::detdataformats detchannelmaps::detchannelmaps) # Any libraries o link in not yet determined 
 
 ##############################################################################
 

@@ -12,7 +12,15 @@
 #include <regex>
 #include <cstdint>
 #include <sstream>
-#include <Frame.hpp> //frame constructor hierarch: frame; timestamp; offchID; adc.
+#include <tuple>
+#include <array>
+
+#include <unordered_map>
+#include <algorithm>
+#include <stdexcept>
+#include <cstring>
+#include <cstdlib>
+//#include <Frame.hpp> //frame constructor hierarch: frame; timestamp; offchID; adc. *No longer available
 
 #include "wib_transposer/BinaryFileReader.hpp"
 
@@ -23,6 +31,7 @@
 
 #include "logging/Logging.hpp"
 
+using namespace dunedaq;
 
 
 struct Data {
@@ -89,12 +98,7 @@ fmt::print("You can also translate into multiple formats at once if you so wish 
 fmt::print("-P -D   or equally   -PD\n");
         exit(0);
     }
-    
-    std::vector<dunedaq::flxlibs::Frame> read_tsv_file(const std::string& tsvinput) //the std::string& acts a reference to tsvinput
-{ //calling function for later
-    std::vector<dunedaq::flxlibs::Frame> frames;
 
-}
 
 
     if (P || D || E) {
@@ -113,137 +117,163 @@ fmt::print("-P -D   or equally   -PD\n");
         P = true;
     }
 
-    // continue with the rest of the program here
-    // ...
 
+//unpack TSV file into temporary struct
 
- /* const fs::path file_path(tsvinput);
-  if (! fs::exists(file_path)) {
+  std::ifstream tsv_file(tsvinput);
+  std::string line;
 
-    fmt::print("ERROR: File {} does not exist.\n", tsvinput);
-    exit(-1);
-
-  }
-*/    
-    
-//if (isblank(wibformat)){
-  // wibformat = P;
-    
-
-
-    //Unpacking tsv ********
-struct Frame {
-    int frame;
-    long long timestamp;
-    std::vector<int> adc_values;
-        };
-
-    std::vector<Frame> read_tsv_file(const std::string& filename) {
-    std::ifstream input_file(filename);
-    if (!input_file) {
-        throw std::runtime_error("Failed to open input file");
+  tsv_file.open(tsvinput, std::ios::binary); //Uses ifile library to provide open command;
+ if ( !tsv_file.is_open() ) {
+        throw std::runtime_error(fmt::format("file couldn't be opened {}", tsvinput));
     }
 
-    std::vector<Frame> frames;
-    int frame = 0;
-    long long timestamp = 0;
-    std::string line;
-    while (std::getline(input_file, line)) {
-        std::istringstream line_stream(line);
-        int ocid, adc_value;
-        if (line_stream >> ocid >> std::hex >> adc_value) {
-            if (ocid < 0 && adc_value < 0) { // end of frame (marked by negative elements)
-                frames.push_back({frame, timestamp, {}});
-                ++frame;
-                timestamp = 0;
-            } else if (ocid < 0 || adc_value < 0) {
-                throw std::runtime_error("Invalid block termination - incompatible elements: " + line);
-            } else {
-                if (frames.empty()) {
-                    throw std::runtime_error("Missing frame header");
-                }
-                auto& adc_values = frames.back().adc_values;
-                if (adc_values.size() <= ocid) {
-                    adc_values.resize(ocid + 1);
-                }
-                adc_values[ocid] = adc_value;
-            }
-        } else if (!line_stream.eof()) {
-            throw std::runtime_error("Invalid input line: " + line);
+
+    // Read the TSV input file into temporary memory
+    int frame;
+    int timestamp;
+    int offline_channel_id;
+    int adc;
+    std::vector<std::vector<std::string>> tsv_data; (frame, timestamp, (offline_channel_id, adc));
+    while (getline(tsv_file, line)) {
+        // Skip blank lines and lines that start with a comment character #
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+
+        // Split the line into fields separated by tabs
+        std::istringstream iss(line);
+        std::string field;
+        std::vector<std::string> row;
+        while (getline(iss, field, '\t')) {
+            row.push_back(field);
+        }
+
+        // Check if the row has the correct number of fields
+        if (row.size() != 2) {
+            std::cerr << "Error: incorrect number of fields in TSV file at line " << tsv_data.size() + 1 << std::endl;
+            return 1;
+        }
+
+        // Check if the row represents the start of a new block of data
+        int frame_number = stoi(row[0]);
+        int timestamp = stoi(row[1]);
+        if (frame_number >= 0 && timestamp >= 0 && tsv_data.size() % 257 == 0) {
+            // This row represents the start of a new block of data
+            tsv_data.push_back({row[0], row[1]});
+        } else {
+            // This row represents a channel in the current block of data
+            tsv_data.back().push_back(row[0]);
+            tsv_data.back().push_back(row[1]);
         }
     }
-    if (!frames.empty() && frames.back().frame_number != frame - 1) {
-        throw std::runtime_error("Missing frame(s)");
-    }
-    std::string last_line;
-    if (!std::getline(input_file, last_line) || last_line.empty() || last_line[0] != 'E') { //this makes sure that the file is complete and there is no missing/buffered data
-        throw std::runtime_error("Block information is incomplete, file may be missing data - please ensure you have the full file");
-    }
 
-    return frames;
-}
-
-
-
-
-
-
-
-    //PROTOWIB Output Format
-if ((D == false && E == false) || P == true) { // Protowib is the standard translation
-    std::cout << "proto-working"; // convert to protowib; temporary check for breaks
-
-   
-   
-    std::string proto_output_file_name;
-    if (D == true || E == true) {
-        proto_output_file_name = binoutput + "_WIB-I.out";
-    } else {
-        proto_output_file_name = binoutput + ".out";
-    }
-    
-    //std::string finp = (tsvinput + ".tsv");
-    std::string proto_input_file_name = finp;
-
-    std::ifstream input_file(proto_input_file_name); //file checks
-    if (!input_file.is_open()) {
-        fmt::print("Unable to open the input file: {}\n", proto_input_file_name);
-        exit(-1);
-    }
-
-    std::shared_ptr<dunedaq::detchannelmaps::TPCChannelMap> proto-channelMap = dunedaq::detchannelmaps::make_map("ProtoDUNESP1ChannelMap");
-    //channelMap.loadOnlineChannelMap("path/to/online/map.tsv");
-/*Error - vector<data> can't accept two int arguments
-    std::vector<Data> data;
-    int slotID; // slot ID
-    int channelID; // channel ID
-    double adc; // adc value
-*/
-
-
-//Add for loop for CSL mapping - OCID matching
-
-    class Data {
-    public:
-        int ocid; //offline channel ID
-    }
-
-
-    while (input_file >> slotID >> channelID >> adc) {
-        auto ocid = channelMap.getOfflineChannel(slotID, channelID);
-        data.push_back({ ocid, adc });
-    }
-
-    std::ofstream output_file(proto_output_file_name, std::ios::binary);
-    if (!output_file.is_open()) {
-        std::cerr << "Failed to open output file: " << proto_output_file_name << std::endl;
+    // Check if the TSV file ends with a single E element
+    if (tsv_data.back().size() != 2 || tsv_data.back()[1] != "E") {
+        std::cerr << "Error: TSV file does not end with a single E element" << std::endl;
         return 1;
     }
 
-    for (const auto& d : data) {
-        output_file.write(reinterpret_cast<const char*>(&d), sizeof(d));
+// Check if each block of data has exactly 256 channels
+for (int i = 0; i < tsv_data.size() - 1; i += 257) {
+    if (tsv_data[i + 1].size() != 2 || tsv_data[i + 257].size() != 2) {
+        std::cerr << "Error: TSV data block #" << (i / 257) << " does not have exactly 256 channels." << std::endl;
+        throw std::invalid_argument("Error: TSV data block does not have exactly 256 channels.");
+    }
+    // Check if the block ends with -1 -1
+    if (tsv_data[i + 256][0].compare("-1") != 0 || tsv_data[i + 256][1].compare("-1") != 0) {
+        std::cerr << "Error: TSV data block #" << (i / 257) << " does not end with -1 -1." << std::endl;
+        throw std::invalid_argument("Error: TSV data block does not end with -1 -1.");
     }
 }
+
+// Check if the last line of the TSV file is a single E element
+if (tsv_data[tsv_data.size() - 1][0].compare("E") != 0 || tsv_data[tsv_data.size() - 1].size() != 1) {
+    std::cerr << "Error: TSV file does not end with a single E element." << std::endl;
+    throw std::invalid_argument("Error: TSV file does not end with a single E element.");
+}
+
+
+  // Temporary memory to store TSV data
+
+  // Read the TSV file
+  while (std::getline(tsv_file, line)) {
+    std::istringstream iss(line);
+    std::vector<std::string> row_data(std::istream_iterator<std::string>{iss},
+                                       std::istream_iterator<std::string>{});
+
+    tsv_data.push_back(row_data);
+  }
+
+  // Print the temporary memory for testing
+  for (auto row : tsv_data) {
+    for (auto elem : row) {
+      std::cout << elem << " ";
+    }
+    std::cout << std::endl;
+  }
+
+//Transposition
+
+if (P == true) { //protowib translation
+
+// Convert temporary memory to WIBFrames and ADCs
+// Create a new vector of vectors to store the CSLW numbers
+
+
+//wire loop: 256; fibre loop: 4; slot loop: 10; crate: 5.
+struct TempWIBFrame {
+  uint64_t frame_number;
+  uint64_t timestamp;
+  std::array<std::array<std::array<std::array<uint16_t, 256>, 4>, 6>, 2> adc_values;
+  std::vector<std::tuple<uint8_t, uint8_t, uint8_t, uint8_t>> cslw_values;
+};
+
+std::vector<TempWIBFrame> temp_wib_data;
+uint64_t frame_number = 0;
+for (auto row : tsv_data) {
+  ++frame_number;
+  for (uint16_t i = 0; i < 256; ++i) {
+    std::shared_ptr<detchannelmaps::TPCChannelMap> pdps1_map = detchannelmaps::make_map("ProtoDUNESP1ChannelMap");
+    uint ocid = pdps1_map->get_offline_channel_from_crate_slot_fiber_chan(std::stoi(row[0]), std::stoi(row[1]), std::stoi(row[2]), i);
+    if (ocid != 0) {
+      TempWIBFrame temp_frame;
+      temp_frame.frame_number = frame_number;
+      temp_frame.timestamp = std::stoull(row[3]);
+      for (uint8_t board = 0; board < 2; ++board) {
+        for (uint8_t link = 0; link < 6; ++link) {
+          for (uint8_t channel = 0; channel < 4; ++channel) {
+            if (pdps1_map->get_offline_channel_from_crate_slot_fiber_chan(std::stoi(row[0]), std::stoi(row[1]), link, channel) == ocid) {
+              for (uint8_t sample = 0; sample < 128; ++sample) {
+                uint16_t adc_value = std::stoi(row[4 + 128 * (4 * board + 6 * channel + link) + sample]);
+                temp_frame.adc_values[channel][link][board][i] = adc_value;
+              }
+            }
+          }
+        }
+      }
+      uint8_t crate_no = std::stoi(row[0]);
+      uint8_t slot_no = std::stoi(row[1]);
+      uint8_t fiber_no = std::stoi(row[2]);
+      uint8_t wire_no = i;
+      temp_frame.cslw_values.push_back(std::make_tuple(crate_no, slot_no, fiber_no, wire_no));
+      temp_wib_data.push_back(temp_frame);
+    }
+  }
+}
+
+//Populating protowib data struct
+// create a WIBFrame object
+detdataformats::wib::WIBFrame wibframe;
+
+// populate the WIBFrame object with the data from the temporary WIB memory struct
+
+
+
+   
+}
+
+
 
 if (D == true) { // WIB-II translation
     std::cout << "WIB-II, dunewib data format, transposition is not yet available";

@@ -10,21 +10,25 @@
 #include <memory>
 #include <map>
 #include <regex>
-#include <cstdint>
 #include <sstream>
 #include <tuple>
 #include <array>
+
+
 
 #include <unordered_map>
 #include <algorithm>
 #include <stdexcept>
 #include <cstring>
 #include <cstdlib>
+#include <cstdint>
 //#include <Frame.hpp> //frame constructor hierarch: frame; timestamp; offchID; adc. *No longer available
 
 #include "wib_transposer/BinaryFileReader.hpp"
 
 #include "detdataformats/wib/WIBFrame.hpp"
+
+//#include "dune-raw-data/Overlays/WIBFrame.hh"
 
 //#include "detchannelmaps/HardwareMap.hpp"
 #include "detchannelmaps/TPCChannelMap.hpp"
@@ -80,6 +84,36 @@ int main(int argc, char **argv) {
         std::cerr << "Output file already exists. Exiting.\n";
         exit(-1);
     }
+
+    if (binoutput.empty()) {
+        binoutput = "output";
+    }
+
+    std::ifstream infile(tsvinput);
+    std::string columnline;
+    int num_cols = -1;
+    
+    if (infile) {
+        while (getline(infile, columnline)) {
+            int count = 0;
+            for (char& c : columnline) {
+                if (c == '\t') {
+                    count++;
+                }
+            }
+            if (num_cols == -1) {
+                num_cols = count;
+            } else if (count != num_cols) {
+                std::cerr << "Error: File does not have two columns" << std::endl;
+                return 1;
+            }
+        }
+        infile.close();
+    } else {
+        std::cerr << "Error: Could not open file" << std::endl;
+        return 1;
+    }
+
 
         //The help description
     if (help) {
@@ -198,11 +232,12 @@ if (tsv_data[tsv_data.size() - 1][0].compare("E") != 0 || tsv_data[tsv_data.size
 
   // Read the TSV file
   while (std::getline(tsv_file, line)) {
-    std::istringstream iss(line);
-    std::vector<std::string> row_data(std::istream_iterator<std::string>{iss},
-                                       std::istream_iterator<std::string>{});
-
-    tsv_data.push_back(row_data);
+std::istringstream iss(line);
+std::vector<std::string> fields;
+std::string field;
+while (std::getline(iss, field, '\t')) {
+    fields.push_back(field);
+  }
   }
 
   // Print the temporary memory for testing
@@ -222,11 +257,17 @@ if (P == true) { //protowib translation
 
 
 //wire loop: 256; fibre loop: 4; slot loop: 10; crate: 5.
+
 struct TempWIBFrame {
-  uint64_t frame_number;
-  uint64_t timestamp;
-  std::array<std::array<std::array<std::array<uint16_t, 256>, 4>, 6>, 2> adc_values;
-  std::vector<std::tuple<uint8_t, uint8_t, uint8_t, uint8_t>> cslw_values;
+    uint64_t frame_number;
+    uint64_t timestamp;
+    uint16_t crate;
+    uint16_t slot;
+    uint16_t link;
+    uint16_t wire;
+    uint16_t adc[256];
+    std::vector<std::tuple<uint8_t, uint8_t, uint8_t, uint8_t>> cslw_values;
+    std::array<std::array<std::array<std::array<uint16_t, 128>, 6>, 4>, 4> adc_values;
 };
 
 std::vector<TempWIBFrame> temp_wib_data;
@@ -263,14 +304,127 @@ for (auto row : tsv_data) {
 }
 
 //Populating protowib data struct
+
 // create a WIBFrame object
 detdataformats::wib::WIBFrame wibframe;
 
-// populate the WIBFrame object with the data from the temporary WIB memory struct
+struct WIBHeader {
+    uint32_t crate_number : 8;
+    uint32_t slot_number : 8;
+    uint32_t fiber_number : 8;
+    uint32_t geo_address : 8;
+    uint32_t reserved1 : 24;
+    uint32_t timestamp_high : 32;
+    uint32_t timestamp_mid : 32;
+    uint32_t timestamp_low : 16;
+    uint32_t version : 4;
+    uint32_t format : 4;
+    uint32_t crate_bits : 4;
+    uint32_t slot_bits : 4;
+    uint32_t fiber_bits : 4;
+    uint32_t reserved2 : 4;
+    uint32_t event_number_high : 16;
+    uint32_t event_number_low : 16;
+};
+
+struct WIBFrame {
+    uint64_t frame_number;
+    uint64_t timestamp;
+    std::array<std::array<std::array<std::array<uint16_t, 256>, 4>, 6>, 2> adc_values;
+};
+
+std::vector<WIBFrame> wib_data;
+
+for (size_t i = 0; i < temp_wib_data.size(); i += 256) {
+    WIBFrame wib_frame;
+    wib_frame.frame_number = temp_wib_data[i].frame_number;
+    wib_frame.timestamp = temp_wib_data[i].timestamp;
+    for (size_t j = i; j < i + 256; ++j) {
+        size_t wire = temp_wib_data[j].wire;
+        uint8_t board = wire / 128;
+        uint8_t channel = (wire % 128) / 32;
+        uint8_t link = (wire % 128) % 32 / 8;
+        uint8_t sample = wire % 8;
+        wib_frame.adc_values[board][channel][link][sample * 32 + j % 32] = temp_wib_data[j].adc_values[channel][link][board][wire];
+    }
+    wib_data.push_back(wib_frame);
+}
+
+// Output the structs to a .out binary file
+
+const uint32_t WIB_HEADERSIZE = 26;
+const uint32_t WIB_CHANNELS_PER_FRAME = 256;
+const uint32_t WIB_SAMPLES_PER_CHANNEL = 112;
+
+struct WibFrame {
+    uint16_t crate_id;
+    uint16_t slot_id;
+    uint16_t fiber_id;
+    uint16_t wibcode;
+    uint16_t timestamp;
+    uint16_t frame_version;
+    uint16_t trig_frame;
+    uint16_t trig_sample;
+    uint16_t trig_frame_mod8;
+    uint16_t fib_fe_latency;
+    uint16_t fib_be_latency;
+    uint16_t fib_ch_latency[4];
+    uint16_t wib_ch_ctrl[4];
+    uint16_t adc[4][WIB_SAMPLES_PER_CHANNEL];
+};
+
+    // define vector to hold WibFrame structs
+    std::vector<WibFrame> frames;
+
+    // populate vector with WibFrame structs
+    for (int i = 0; i < 10; i++) {
+        WibFrame frame;
+        frame.crate_id = 0x1;
+        frame.slot_id = 0x2;
+        frame.fiber_id = 0x3;
+        frame.wibcode = 0x4;
+        frame.timestamp = 0x5;
+        frame.frame_version = 0x6;
+        frame.trig_frame = 0x7;
+        frame.trig_sample = 0x8;
+        frame.trig_frame_mod8 = 0x9;
+        frame.fib_fe_latency = 0xA;
+        frame.fib_be_latency = 0xB;
+        for (int j = 0; j < 4; j++) {
+            frame.fib_ch_latency[j] = 0xC + j;
+            frame.wib_ch_ctrl[j] = 0xD + j;
+            for (int k = 0; k < WIB_SAMPLES_PER_CHANNEL; k++) {
+                frame.adc[j][k] = k;
+            }
+        }
+        frames.push_back(frame);
+    }
+
+    std::string protooutput;
+    if (D == true || E == true){
+       protooutput = binoutput + "-protowib.out";
+    } else {
+        protooutput = binoutput + ".out";
+    }
+
+    //check
+
+        if (std::filesystem::exists(protooutput)) {
+        std::cerr << "Protowib output file already exists.\n";
+        } else {
 
 
+    // open output file in binary mode
+    std::ofstream outfile(protooutput, std::ios::out | std::ios::binary);
 
-   
+    // write vector of WibFrame structs to binary file
+    for (const WibFrame& frame : frames) {
+        outfile.write(reinterpret_cast<const char*>(&frame), sizeof(frame));
+    }
+
+    // close output file
+    outfile.close();
+        }
 }
 
 

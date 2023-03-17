@@ -50,11 +50,11 @@ int main(int argc, char **argv) {
     bool P = false; //WIB-I this is the default conversion format - if not options input, this is the format chosen
     bool D = false; //WIB-II format
     bool E = false; //Ethernet format
-    bool help = false; //help option
+    //bool help = false; //help option
     std::string tsvinput;
     std::string binoutput;
 
-    app.add_flag("-?,--help", help, "Assistance");
+    //app.add_flag("-?,--help", help, "Assistance");
 
     // input file from Universal Format
     app.add_option("tsv input", tsvinput, "Name of input TSV file")->required();
@@ -114,8 +114,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-
-        //The help description
+/*
+        //The help description - LEAVING OUT for now, std::exception error thrown if included
     if (help) {
 fmt::print("Please enter the command as follows:\n");
 fmt::print("            <program>   <input file name>   -WhichFormatDoYouWant   <output file name>\n");
@@ -132,7 +132,7 @@ fmt::print("You can also translate into multiple formats at once if you so wish 
 fmt::print("-P -D   or equally   -PD\n");
         exit(0);
     }
-
+*/
 
 
     if (P || D || E) {
@@ -182,6 +182,7 @@ fmt::print("-P -D   or equally   -PD\n");
         while (getline(iss, field, '\t')) {
             row.push_back(field);
         }
+    
 
         // Check if the row has the correct number of fields
         if (row.size() != 2) {
@@ -202,11 +203,16 @@ fmt::print("-P -D   or equally   -PD\n");
         }
     }
 
+    //ERROR CHECKS not working - need debugged
+/*
     // Check if the TSV file ends with a single E element
     if (tsv_data.back().size() != 2 || tsv_data.back()[1] != "E") {
         std::cerr << "Error: TSV file does not end with a single E element" << std::endl;
         return 1;
     }
+
+
+
 
 // Check if each block of data has exactly 256 channels
 for (int i = 0; i < tsv_data.size() - 1; i += 257) {
@@ -226,6 +232,11 @@ if (tsv_data[tsv_data.size() - 1][0].compare("E") != 0 || tsv_data[tsv_data.size
     std::cerr << "Error: TSV file does not end with a single E element." << std::endl;
     throw std::invalid_argument("Error: TSV file does not end with a single E element.");
 }
+*/
+
+
+
+
 
 
   // Temporary memory to store TSV data
@@ -302,6 +313,7 @@ for (auto row : tsv_data) {
     }
   }
 }
+
 
 //Populating protowib data struct
 
@@ -438,37 +450,6 @@ if (E == true) { // ethernet translation
     std::cout << "Ethernet, ethernet data format, transposition is not yet available";
 
 }
-/*
-    std::string fin = (tsvinput + ".tsv");
-    std::string input_file_name = fin;
-    std::string output_file_name = "output.out";
 
-    std::ifstream input_file(input_file_name);
-    if (!input_file.is_open()) {
-        std::cerr << "Failed to open input file: " << input_file_name << std::endl;
-        return 1;
-    }
-*/
-
-/*
-    
-
-    std::vector<Data> data;
-    int c1;
-    double c2;
-    while (input_file >> c1 >> c2) {
-        data.push_back({c1, c2});
-    }
-
-    std::ofstream output_file(output_file_name, std::ios::binary);
-    if (!output_file.is_open()) {
-        std::cerr << "Failed to open output file: " << output_file_name << std::endl;
-        return 1;
-    }
-
-    for (const auto& d : data) {
-        output_file.write(reinterpret_cast<const char*>(&d), sizeof(d));
-    }
-*/
     return 0;
 }

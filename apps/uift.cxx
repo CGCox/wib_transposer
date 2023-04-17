@@ -152,64 +152,102 @@ fmt::print("-P -D   or equally   -PD\n");
     }
 
 
+
+
 //unpack TSV file into temporary struct
+std::ifstream tsv_file;
+std::string line;
+tsv_file.open(tsvinput); // open the file
+if (!tsv_file.is_open()) {
+    std::cerr << "Error: file couldn't be opened " << tsvinput << std::endl;
+    return 1;
+}
 
-  std::ifstream tsv_file(tsvinput);
-  std::string line;
+std::cout << "TSV file opened successfully." << std::endl;
 
-  tsv_file.open(tsvinput, std::ios::binary); //Uses ifile library to provide open command;
- if ( !tsv_file.is_open() ) {
-        throw std::runtime_error(fmt::format("file couldn't be opened {}", tsvinput));
+// Read the TSV input file into temporary memory
+int frame;
+long long timestamp;
+int offlinechannelid;
+int adc;
+std::vector<std::tuple<int, long long, std::vector<int>>> data_vector; //(frame, timestamp, (offline_channel_id, adc));
+int row_num = 0;
+int BN = 0; // Block number
+int Header_FN = 0;
+int Header_T = 0;
+bool Header = true;
+std::string Element1;
+std::string Element2;
+std::regex rgx("\\s+");
+int channels_per_block = 0; // number of channels per block
+int current_channel = 0; // current channel in the block
+std::vector<std::vector<int>> block_data; // stores the data of a block
+//Predfines a bunch of variables to simplify loop
+
+while (std::getline(tsv_file, line)) {
+    std::sregex_token_iterator iter(line.begin(), line.end(), rgx, -1); //Separates the tsv row into two distinct elements separated by a tab/space
+    std::vector<std::string> data(iter, {});
+    std::string Element1 = data[0]; //the first element of the tow
+
+    if (Element1 == "E") { //End of TSV data
+        break;
     }
-
-
-    // Read the TSV input file into temporary memory
-    int frame;
-    int timestamp;
-    int offline_channel_id;
-    int adc;
-    std::vector<std::vector<std::string>> tsv_data; (frame, timestamp, (offline_channel_id, adc));
-    while (getline(tsv_file, line)) {
-        // Skip blank lines and lines that start with a comment character #
-        if (line.empty() || line[0] == '#') {
-            continue;
-        }
-
-        // Split the line into fields separated by tabs
-        std::istringstream iss(line);
-        std::string field;
-        std::vector<std::string> row;
-        while (getline(iss, field, '\t')) {
-            row.push_back(field);
-        }
+    
+    std::string Element2 = data[1]; //the second element of the row
     
 
-        // Check if the row has the correct number of fields
-        if (row.size() != 2) {
-            std::cerr << "Error: incorrect number of fields in TSV file at line " << tsv_data.size() + 1 << std::endl;
-            return 1;
-        }
-
-        // Check if the row represents the start of a new block of data
-        int frame_number = stoi(row[0]);
-        int timestamp = stoi(row[1]);
-        if (frame_number >= 0 && timestamp >= 0 && tsv_data.size() % 257 == 0) {
-            // This row represents the start of a new block of data
-            tsv_data.push_back({row[0], row[1]});
+    if(Header){ //starts of true, assuming first line of TSV is a header line
+        Header_FN = std::stoi(Element1); //assigns the frame number for a block
+        Header_T = std::stoll(Element2); //assigns the timestamp for a block
+        BN++; //Increases the block number counter - everytime there's a new headerline, BN increases by 1
+        Header = false;
+    } else {
+        if(std::stoi(data[0]) < 0 /*|| std::stoi(data[1]) < 0*/) { //checks if the row is negative, signifying the end of a block, resetting 'Header' boolean and disarding the negative values
+            Header = true;
+            Header_FN = 0;
+            Header_T = 0;
         } else {
-            // This row represents a channel in the current block of data
-            tsv_data.back().push_back(row[0]);
-            tsv_data.back().push_back(row[1]);
+            std::vector<int> row_data(2); //creates a vector for the offline channel ID and adc values; the row is complete by pairing with the block frame number and timestamp
+            row_data[0] = std::stoi(data[0]);
+            row_data[1] = std::stoi(data[1], nullptr, 16);
+            data_vector.push_back(std::make_tuple(Header_FN, Header_T, row_data));
         }
     }
 
+
+}
+
+
+
+fmt::print("TSV Parsing successful, with {} blocks with {} size\n",BN,data_vector.size());
+fmt::print("Sample row 56: ({}, {}, ({}, {})) \n", std::get<0>(data_vector[56]), std::get<1>(data_vector[56]), std::get<2>(data_vector[56])[0], std::get<2>(data_vector[56])[1]);
+
+
+
+
+// Print the vector of vectors
+/*
+    for (const auto& row : tsv_data) {
+        for (const auto& field : row) {
+            fmt::print("{}\t", field);
+        }
+        fmt::print("\n");
+    }
+*/
+
+
     //ERROR CHECKS not working - need debugged
+
+    /*
+    These must occur before temporary memory transposition to ensure errors aren't erroneously spit out when checking lossy data or partial data
+    */
 /*
     // Check if the TSV file ends with a single E element
     if (tsv_data.back().size() != 2 || tsv_data.back()[1] != "E") {
         std::cerr << "Error: TSV file does not end with a single E element" << std::endl;
         return 1;
     }
+
 
 
 
@@ -235,30 +273,6 @@ if (tsv_data[tsv_data.size() - 1][0].compare("E") != 0 || tsv_data[tsv_data.size
 */
 
 
-
-
-
-
-  // Temporary memory to store TSV data
-
-  // Read the TSV file
-  while (std::getline(tsv_file, line)) {
-std::istringstream iss(line);
-std::vector<std::string> fields;
-std::string field;
-while (std::getline(iss, field, '\t')) {
-    fields.push_back(field);
-  }
-  }
-
-  // Print the temporary memory for testing
-  for (auto row : tsv_data) {
-    for (auto elem : row) {
-      std::cout << elem << " ";
-    }
-    std::cout << std::endl;
-  }
-
 //Transposition
 
 if (P == true) { //protowib translation
@@ -269,6 +283,8 @@ if (P == true) { //protowib translation
 
 //wire loop: 256; fibre loop: 4; slot loop: 10; crate: 5.
 
+//New Method; retaining this section for future use
+/*
 struct TempWIBFrame {
     uint64_t frame_number;
     uint64_t timestamp;
@@ -313,104 +329,162 @@ for (auto row : tsv_data) {
     }
   }
 }
-
+*/
+//End of section being used for future use
 
 //Populating protowib data struct
 
-// create a WIBFrame object
-detdataformats::wib::WIBFrame wibframe;
 
-struct WIBHeader {
-    uint32_t crate_number : 8;
-    uint32_t slot_number : 8;
-    uint32_t fiber_number : 8;
-    uint32_t geo_address : 8;
-    uint32_t reserved1 : 24;
-    uint32_t timestamp_high : 32;
-    uint32_t timestamp_mid : 32;
-    uint32_t timestamp_low : 16;
-    uint32_t version : 4;
-    uint32_t format : 4;
-    uint32_t crate_bits : 4;
-    uint32_t slot_bits : 4;
-    uint32_t fiber_bits : 4;
-    uint32_t reserved2 : 4;
-    uint32_t event_number_high : 16;
-    uint32_t event_number_low : 16;
-};
 
-struct WIBFrame {
-    uint64_t frame_number;
-    uint64_t timestamp;
-    std::array<std::array<std::array<std::array<uint16_t, 256>, 4>, 6>, 2> adc_values;
-};
 
-std::vector<WIBFrame> wib_data;
+ // define vector to hold WibFrame structs
+ std::vector<detdataformats::wib::WIBFrame> frames;
 
-for (size_t i = 0; i < temp_wib_data.size(); i += 256) {
-    WIBFrame wib_frame;
-    wib_frame.frame_number = temp_wib_data[i].frame_number;
-    wib_frame.timestamp = temp_wib_data[i].timestamp;
-    for (size_t j = i; j < i + 256; ++j) {
-        size_t wire = temp_wib_data[j].wire;
-        uint8_t board = wire / 128;
-        uint8_t channel = (wire % 128) / 32;
-        uint8_t link = (wire % 128) % 32 / 8;
-        uint8_t sample = wire % 8;
-        wib_frame.adc_values[board][channel][link][sample * 32 + j % 32] = temp_wib_data[j].adc_values[channel][link][board][wire];
+// Loop through all blocks
+for (int B = 0; B < BN; B++) {
+    
+    // create a WIBFrame object
+    detdataformats::wib::WIBFrame wibframe;
+
+    std::shared_ptr<detchannelmaps::TPCChannelMap> pdps1_map = detchannelmaps::make_map("ProtoDUNESP1ChannelMap");
+
+    uint cbfr = B*(data_vector.size()/BN);
+
+    // Get the offline channel ID from the first element of the second row
+    uint offline_channel_id = std::get<2>(data_vector[cbfr])[0];
+
+    // Initialize variables for the crate, slot, and fiber numbers
+    uint crate_no, slot_no, fiber_no;
+    bool found = false;
+
+    // Loop through all possible combinations of crate, slot, and fiber numbers
+    for (int crate = 1; crate < 7; crate++) { //There are 6 crates
+        //fmt::print("Crate: {} \n", crate);
+        for (int slot = 0; slot < 5; slot++) { //There are 5 slots
+            //fmt::print("Slot: {} \n", slot);
+            for (int fiber = 1; fiber < 3; fiber++) { //There are 2 fibres
+                //fmt::print("Fiber: {} \n", fiber);
+
+                // Get the offline channel ID for this combination of crate, slot, and fiber numbers
+                uint ocid = pdps1_map->get_offline_channel_from_crate_slot_fiber_chan(crate, slot, fiber, 0);
+                //fmt::print("CSF: {}, {}, {} - - - OCID: {} ~{}~ \n", crate, slot, fiber, offline_channel_id, ocid);
+                // If the offline channel ID matches the one we're looking for, set the crate, slot, and fiber numbers
+                if (ocid == offline_channel_id) {
+                    crate_no = crate;
+                    //fmt::print("Crate: {} ;", crate_no);
+                    slot_no = slot;
+                    //fmt::print("Slot: {} ;", slot_no);
+                    fiber_no = fiber;
+                    //fmt::print("Fiber: {}. \n", fiber_no);
+                    found = true;
+                }
+                if (found) {
+                    break;
+                }
+            }
+            if (found) {
+                break;
+            }
+        }
+        if (found) {
+            break;
+        }
     }
-    wib_data.push_back(wib_frame);
-}
+    uint currentB = B+1;
+    fmt::print("The Crate '{}', Slot '{}' and Fiber '{}' for block '{}' were isolated \n", crate_no, slot_no, fiber_no, currentB);
+    
 
-// Output the structs to a .out binary file
+// Now 'crate', 'slot' and 'fiber' should be set to the corresponding values for 'ocid'
 
-const uint32_t WIB_HEADERSIZE = 26;
-const uint32_t WIB_CHANNELS_PER_FRAME = 256;
-const uint32_t WIB_SAMPLES_PER_CHANNEL = 112;
 
-struct WibFrame {
-    uint16_t crate_id;
-    uint16_t slot_id;
-    uint16_t fiber_id;
-    uint16_t wibcode;
-    uint16_t timestamp;
-    uint16_t frame_version;
-    uint16_t trig_frame;
-    uint16_t trig_sample;
-    uint16_t trig_frame_mod8;
-    uint16_t fib_fe_latency;
-    uint16_t fib_be_latency;
-    uint16_t fib_ch_latency[4];
-    uint16_t wib_ch_ctrl[4];
-    uint16_t adc[4][WIB_SAMPLES_PER_CHANNEL];
-};
+// struct WIBFrame {
+//     uint64_t frame_number;
+//     uint64_t timestamp;
+//     std::array<std::array<std::array<std::array<uint16_t, 256>, 4>, 6>, 2> adc_values;
+// };
 
-    // define vector to hold WibFrame structs
-    std::vector<WibFrame> frames;
+// std::vector<WIBFrame> wib_data;
+
+// for (size_t i = 0; i < temp_wib_data.size(); i += 256) {
+//     WIBFrame wib_frame;
+//     wib_frame.frame_number = temp_wib_data[i].frame_number;
+//     wib_frame.timestamp = temp_wib_data[i].timestamp;
+//     for (size_t j = i; j < i + 256; ++j) {
+//         size_t wire = temp_wib_data[j].wire;
+//         uint8_t board = wire / 128; 
+//         uint8_t channel = (wire % 128) / 32;
+//         uint8_t link = (wire % 128) % 32 / 8;
+//         uint8_t sample = wire % 8;
+//         wib_frame.adc_values[board][channel][link][sample * 32 + j % 32] = temp_wib_data[j].adc_values[channel][link][board][wire];
+//     }
+//     wib_data.push_back(wib_frame);
+// }
+
+// // Output the structs to a .out binary file
+
+// const uint32_t WIB_HEADERSIZE = 26;
+// const uint32_t WIB_CHANNELS_PER_FRAME = 256;
+// const uint32_t WIB_SAMPLES_PER_CHANNEL = 112;
+
+// struct WibFrame {
+//     uint16_t crate_id;
+//     uint16_t slot_id;
+//     uint16_t fiber_id;
+//     uint16_t wibcode;
+//     uint16_t timestamp;
+//     uint16_t frame_version;
+//     uint16_t trig_frame;
+//     uint16_t trig_sample;
+//     uint16_t trig_frame_mod8;
+//     uint16_t fib_fe_latency;
+//     uint16_t fib_be_latency;
+//     uint16_t fib_ch_latency[4];
+//     uint16_t wib_ch_ctrl[4];
+//     uint16_t adc[4][WIB_SAMPLES_PER_CHANNEL];
+// };
+
+    
 
     // populate vector with WibFrame structs
+    /*
     for (int i = 0; i < 10; i++) {
-        WibFrame frame;
-        frame.crate_id = 0x1;
-        frame.slot_id = 0x2;
-        frame.fiber_id = 0x3;
-        frame.wibcode = 0x4;
-        frame.timestamp = 0x5;
-        frame.frame_version = 0x6;
-        frame.trig_frame = 0x7;
-        frame.trig_sample = 0x8;
-        frame.trig_frame_mod8 = 0x9;
-        frame.fib_fe_latency = 0xA;
-        frame.fib_be_latency = 0xB;
-        for (int j = 0; j < 4; j++) {
-            frame.fib_ch_latency[j] = 0xC + j;
-            frame.wib_ch_ctrl[j] = 0xD + j;
-            for (int k = 0; k < WIB_SAMPLES_PER_CHANNEL; k++) {
-                frame.adc[j][k] = k;
-            }
+        detdataformats::wib::WIBFrame frame;
+        detdataformats::wib::WIBHeader* wh = frame.get_wib_header();
+        wh->crate_no = 0x4;
+        wh->slot_no = 0x0;
+        wh->fiber_no = 0x1;
+        wh->set_timestamp(0x5);
+        for( size_t i(0); i<256; ++i) {
+            frame.set_channel(i, i);
         }
         frames.push_back(frame);
     }
+    */
+   
+
+
+
+
+
+   //HERE
+
+    // Now you can use crate_no, slot_no, and fiber_no to create the WIBFrame object and populate it with data
+    // Loop over all channels in the block
+    detdataformats::wib::WIBHeader* wh = wibframe.get_wib_header();
+    wh->crate_no = crate_no;
+    wh->slot_no = slot_no;
+    wh->fiber_no = fiber_no;
+    //fmt::print("{} {} {}\n", crate_no, slot_no, fiber_no);
+        int row = B*256;
+        wh->set_timestamp(std::get<1>(data_vector[row]));
+        for (size_t i = 0; i < 256; ++i) {
+            wibframe.set_channel(i, std::get<2>(data_vector[row+i])[1]);  // +3 to skip the header columns
+            }
+        frames.push_back(wibframe);
+
+
+}
+
 
     std::string protooutput;
     if (D == true || E == true){
@@ -430,24 +504,25 @@ struct WibFrame {
     std::ofstream outfile(protooutput, std::ios::out | std::ios::binary);
 
     // write vector of WibFrame structs to binary file
-    for (const WibFrame& frame : frames) {
-        outfile.write(reinterpret_cast<const char*>(&frame), sizeof(frame));
+    for (const  detdataformats::wib::WIBFrame& wibframe : frames) {
+        outfile.write(reinterpret_cast<const char*>(&wibframe), sizeof(wibframe));
     }
 
     // close output file
     outfile.close();
         }
+        
 }
 
 
 
 if (D == true) { // WIB-II translation
-    std::cout << "WIB-II, dunewib data format, transposition is not yet available";
+    std::cout << "WIB-II, dunewib data format, transposition is not yet available\n";
 
 }
 
 if (E == true) { // ethernet translation
-    std::cout << "Ethernet, ethernet data format, transposition is not yet available";
+    std::cout << "Ethernet, ethernet data format, transposition is not yet available\n";
 
 }
 

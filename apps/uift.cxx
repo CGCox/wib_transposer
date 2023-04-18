@@ -167,14 +167,14 @@ std::cout << "TSV file opened successfully." << std::endl;
 
 // Read the TSV input file into temporary memory
 int frame;
-long long timestamp;
+unsigned long long timestamp;
 int offlinechannelid;
 int adc;
 std::vector<std::tuple<int, long long, std::vector<int>>> data_vector; //(frame, timestamp, (offline_channel_id, adc));
 int row_num = 0;
 int BN = 0; // Block number
 int Header_FN = 0;
-int Header_T = 0;
+unsigned long long Header_T = 0;
 bool Header = true;
 std::string Element1;
 std::string Element2;
@@ -198,7 +198,7 @@ while (std::getline(tsv_file, line)) {
 
     if(Header){ //starts of true, assuming first line of TSV is a header line
         Header_FN = std::stoi(Element1); //assigns the frame number for a block
-        Header_T = std::stoll(Element2); //assigns the timestamp for a block
+        Header_T = std::stoull(Element2); //assigns the timestamp for a block
         BN++; //Increases the block number counter - everytime there's a new headerline, BN increases by 1
         Header = false;
     } else {
@@ -220,7 +220,7 @@ while (std::getline(tsv_file, line)) {
 
 
 fmt::print("TSV Parsing successful, with {} blocks with {} size\n",BN,data_vector.size());
-fmt::print("Sample row 56: ({}, {}, ({}, {})) \n", std::get<0>(data_vector[56]), std::get<1>(data_vector[56]), std::get<2>(data_vector[56])[0], std::get<2>(data_vector[56])[1]);
+//fmt::print("Sample row 56: ({}, {}, ({}, {})) \n", std::get<0>(data_vector[56]), std::get<1>(data_vector[56]), std::get<2>(data_vector[56])[0], std::get<2>(data_vector[56])[1]);
 
 
 
@@ -477,6 +477,7 @@ for (int B = 0; B < BN; B++) {
     //fmt::print("{} {} {}\n", crate_no, slot_no, fiber_no);
         int row = B*256;
         wh->set_timestamp(std::get<1>(data_vector[row]));
+        //fmt::print("Timestamp: {}; \n", std::get<1>(data_vector[row]));
         for (size_t i = 0; i < 256; ++i) {
             wibframe.set_channel(i, std::get<2>(data_vector[row+i])[1]);  // +3 to skip the header columns
             }
